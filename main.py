@@ -1,6 +1,5 @@
 import os
 import time
-import json
 import requests
 from datetime import date
 
@@ -9,23 +8,12 @@ DATABASE_ID = os.environ["DATABASE_ID"]
 TG_TOKEN = os.environ["TG_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 CHANNEL_ID = os.environ.get("CHANNEL_ID", "")
-SEEN_FILE = "seen_ids.json"
 
 HEADERS = {
     "Authorization": f"Bearer {NOTION_TOKEN}",
     "Notion-Version": "2022-06-28",
     "Content-Type": "application/json"
 }
-
-def load_seen():
-    if os.path.exists(SEEN_FILE):
-        with open(SEEN_FILE) as f:
-            return set(json.load(f))
-    return set()
-
-def save_seen(ids):
-    with open(SEEN_FILE, "w") as f:
-        json.dump(list(ids), f)
 
 def get_text(prop):
     if not prop:
@@ -51,18 +39,17 @@ def get_text(prop):
         d = prop.get("date")
         return d["start"] if d else ""
     elif t == "checkbox":
-        return "Ha" if prop.get("checkbox") else "Yo'q"
+        return prop.get("checkbox", False)
     elif t == "url":
         return prop.get("url") or ""
     elif t == "files":
         files = prop.get("files", [])
-        urls = []
         for f in files:
             if f.get("type") == "external":
-                urls.append(f["external"]["url"])
+                return f["external"]["url"]
             elif f.get("type") == "file":
-                urls.append(f["file"]["url"])
-        return urls[0] if urls else ""
+                return f["file"]["url"]
+        return ""
     return ""
 
 def get_age(birth_str):
@@ -74,7 +61,10 @@ def get_age(birth_str):
         else:
             parts = birth_str.replace(",", "").split()
             year = int(parts[-1])
-        return str(date.today().year - year)
+        age = date.today().year - year
+        if age < 0 or age > 100:
+            return ""
+        return str(age)
     except:
         return ""
 
@@ -97,24 +87,24 @@ def format_entry(entry):
     backup     = g("Zahira telefon raqamingiz?")
     status     = g("Hozirgi vaqtda ...?")
     family     = g("Oilaviz ahvolingiz?")
+    health     = g("Kasalliklaringiz bormi? Bor bo'lsa, bular bo'yicha ma'lumot bering!")
+    education  = g("Ma'lumotingiz?")
+    university = g("Qaysi o'quv yurtini qaysi yo'nalishini tugatgansiz?")
+    years      = g("Qaysi yillarda?")
     russian    = g("Rus tili bilish darajangiz?")
     english    = g("Ingliz tili bilish darajangiz? ")
     other_lang = g("Boshqa qaysi chet tilini bilasiz?")
     computer   = g("Kompyuterdan foydalanish darajangiz?")
     programs   = g("Qaysi kompyuter dasturlarini yuqori darajada bilasiz?")
-    education  = g("Ma'lumotingiz?")
-    university = g("Qaysi o'quv yurtini qaysi yo'nalishini tugatgansiz?")
-    years      = g("Qaysi yillarda?")
     prev_jobs  = g("Oldingi ish joylaringiz? Qaysi davrlarda, qaysi tashkilotda va qaysi vazifalarda?")
     achieve    = g("Oldingi ish joylaringizda erishga yutuqlaringiz?")
     last_job   = g("Oxirgi ish joyingiz va bo'shash sababi?")
     hr_phone   = g("Ohirgi ish joyingizdan Siz haqingizda ma'lumot olish uchun HR yoki rahbariyat telefon raqami?")
-    stay       = g("Bizning korxonada qancha muddat ishlamoqchisiz?")
     why_hire   = g("Nega sizni ishga olishimiz kerak?")
     future     = g("5 yildan keyin o'zingizni qayerda ko'rayapsiz?")
-    health     = g("Kasalliklaringiz bormi? Bor bo'lsa, bular bo'yicha ma'lumot bering!")
-    criminal   = g("Sudlanganmisiz?")
+    stay       = g("Bizning korxonada qancha muddat ishlamoqchisiz?")
     credit     = g("Kredit qarzdorligingiz bormi?")
+    criminal   = g("Sudlanganmisiz?")
     background = g("Personal Background [Tug'ulganingizda hozirgacha barcha ma'lumotlarni yillar kesimida yozib bering]! *")
     photo_url  = g("Photo")
 
@@ -161,15 +151,21 @@ def format_entry(entry):
     text = "\n".join(line for line in lines if line is not None)
     return text, photo_url
 
+def mark_as_sent(page_id):
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    requests.patch(url, headers=HEADERS, json={
+        "properties": {
+            "Telegram": {"checkbox": True}
+        }
+    })
+
 def send_message(chat_id, text, photo_url):
     base_url = f"https://api.telegram.org/bot{TG_TOKEN}"
     if photo_url:
         try:
-            # Rasmni yuklab olamiz
             img_resp = requests.get(photo_url, timeout=15)
             if img_resp.ok:
-                # Fayl sifatida yuboramiz
-                resp = requests.post(f"{base_url}/sendPhoto", 
+                resp = requests.post(f"{base_url}/sendPhoto",
                     data={"chat_id": chat_id, "caption": text, "parse_mode": "HTML"},
                     files={"photo": ("photo.jpg", img_resp.content, "image/jpeg")}
                 )
@@ -180,7 +176,6 @@ def send_message(chat_id, text, photo_url):
                 print(f"Rasm yuklab bo'lmadi: {img_resp.status_code}")
         except Exception as e:
             print(f"Rasm xato: {e}")
-    # Rasm yo'q yoki xato — matn sifatida yuboramiz
     resp = requests.post(f"{base_url}/sendMessage", json={
         "chat_id": chat_id,
         "text": text,
@@ -197,10 +192,14 @@ def send_telegram(text, photo_url):
             success = False
     return success
 
-def query_database():
+def query_new():
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
     body = {
-        "sorts": [{"timestamp": "created_time", "direction": "descending"}],
+        "filter": {
+            "property": "Telegram",
+            "checkbox": {"equals": False}
+        },
+        "sorts": [{"timestamp": "created_time", "direction": "ascending"}],
         "page_size": 20
     }
     resp = requests.post(url, headers=HEADERS, json=body)
@@ -211,28 +210,16 @@ def query_database():
 
 def main():
     print("Bot ishga tushdi...")
-    seen = load_seen()
-
-    if not seen:
-        print("Birinchi ishga tushish — mavjud yozuvlar saqlanmoqda...")
-        entries = query_database()
-        for e in entries:
-            seen.add(e["id"])
-        save_seen(seen)
-        print(f"{len(seen)} ta mavjud yozuv saqlandi. Yangilarini kutmoqda...")
-
     while True:
         try:
-            entries = query_database()
-            new_entries = [e for e in entries if e["id"] not in seen]
-            for entry in reversed(new_entries):
+            entries = query_new()
+            for entry in entries:
                 text, photo_url = format_entry(entry)
                 if send_telegram(text, photo_url):
-                    seen.add(entry["id"])
+                    mark_as_sent(entry["id"])
                     print(f"Yuborildi: {entry['id']}")
                 else:
                     print(f"Xato: yuborib bo'lmadi")
-            save_seen(seen)
         except Exception as e:
             print(f"Xato: {e}")
         time.sleep(30)
