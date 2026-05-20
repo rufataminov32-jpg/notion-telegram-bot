@@ -159,6 +159,8 @@ def send_telegram(text):
         "text": text,
         "parse_mode": "Markdown"
     })
+    if not resp.ok:
+        print(f"Telegram xato: {resp.status_code} — {resp.json()}")
     return resp.ok
 
 def query_database():
