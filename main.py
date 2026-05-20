@@ -56,22 +56,25 @@ def get_text(prop):
         return prop.get("url") or ""
     elif t == "files":
         files = prop.get("files", [])
-        return ", ".join(f.get("name", "") for f in files)
+        urls = []
+        for f in files:
+            if f.get("type") == "external":
+                urls.append(f["external"]["url"])
+            elif f.get("type") == "file":
+                urls.append(f["file"]["url"])
+        return urls[0] if urls else ""
     return ""
 
 def get_age(birth_str):
     if not birth_str:
         return ""
     try:
-        months = {"January":1,"February":2,"March":3,"April":4,"May":5,"June":6,
-                  "July":7,"August":8,"September":9,"October":10,"November":11,"December":12}
         if "-" in birth_str:
             year = int(birth_str[:4])
         else:
             parts = birth_str.replace(",", "").split()
             year = int(parts[-1])
-        age = date.today().year - year
-        return str(age)
+        return str(date.today().year - year)
     except:
         return ""
 
@@ -86,83 +89,109 @@ def format_entry(entry):
         return get_text(props.get(key, {}))
 
     full_name  = g("Full Name")
-    phone      = g("Telefon raqami?")
-    backup     = g("Zahira telefon raqamingiz?")
-    hr_phone   = g("Ohirgi ish joyingizdan Siz haqingizda ma'lumot olish uchun HR yoki rahbariyat telefon raqami?")
+    entered    = g("Bugungi sana")
     birth      = g("Tug'ilgan sanangiz?")
     age        = get_age(birth) or g("Yoshingiz?")
     address    = g("Yashash manzilingiz [Tuman, MFY, ko'cha, uy]?")
+    phone      = g("Telefon raqami?")
+    backup     = g("Zahira telefon raqamingiz?")
     status     = g("Hozirgi vaqtda ...?")
     family     = g("Oilaviz ahvolingiz?")
-    health     = g("Kasalliklaringiz bormi? Bor bo'lsa, bular bo'yicha ma'lumot bering!")
-    education  = g("Ma'lumotingiz?")
-    university = g("Qaysi o'quv yurtini qaysi yo'nalishini tugatgansiz?")
-    years      = g("Qaysi yillarda?")
-    english    = g("Ingliz tili bilish darajangiz? ")
     russian    = g("Rus tili bilish darajangiz?")
+    english    = g("Ingliz tili bilish darajangiz? ")
     other_lang = g("Boshqa qaysi chet tilini bilasiz?")
     computer   = g("Kompyuterdan foydalanish darajangiz?")
     programs   = g("Qaysi kompyuter dasturlarini yuqori darajada bilasiz?")
-    last_job   = g("Oxirgi ish joyingiz va bo'shash sababi?")
+    education  = g("Ma'lumotingiz?")
+    university = g("Qaysi o'quv yurtini qaysi yo'nalishini tugatgansiz?")
+    years      = g("Qaysi yillarda?")
     prev_jobs  = g("Oldingi ish joylaringiz? Qaysi davrlarda, qaysi tashkilotda va qaysi vazifalarda?")
     achieve    = g("Oldingi ish joylaringizda erishga yutuqlaringiz?")
+    last_job   = g("Oxirgi ish joyingiz va bo'shash sababi?")
+    hr_phone   = g("Ohirgi ish joyingizdan Siz haqingizda ma'lumot olish uchun HR yoki rahbariyat telefon raqami?")
+    stay       = g("Bizning korxonada qancha muddat ishlamoqchisiz?")
     why_hire   = g("Nega sizni ishga olishimiz kerak?")
     future     = g("5 yildan keyin o'zingizni qayerda ko'rayapsiz?")
-    stay       = g("Bizning korxonada qancha muddat ishlamoqchisiz?")
-    credit     = g("Kredit qarzdorligingiz bormi?")
+    health     = g("Kasalliklaringiz bormi? Bor bo'lsa, bular bo'yicha ma'lumot bering!")
     criminal   = g("Sudlanganmisiz?")
-    entered    = g("Bugungi sana")
+    credit     = g("Kredit qarzdorligingiz bormi?")
+    background = g("Personal Background [Tug'ulganingizda hozirgacha barcha ma'lumotlarni yillar kesimida yozib bering]! *")
+    photo_url  = g("Photo")
 
     birth_display = f"{birth} ({age} yosh)" if birth and age else birth
 
     lines = [
-        f"📅 <b>Sana:</b> {entered}",
+        f"🆕 <b>Yangi anketa!</b>",
+        f"📅 <b>Bugungi sana:</b> {entered}",
         "",
-        row("👤", "FISh", full_name),
-        row("📞", "Telefon", phone),
-        row("📞", "Zahira tel", backup),
-        row("📞", " Avvalgi ish joyidagi HR ", hr_phone),
-        row("🎂", "Tug'ilgan sana", birth_display),
-        row("📍", "Manzil", address),
+        row("👤", "Full Name", full_name),
+        row("📞", "Telefon raqami", phone),
+        row("📞", "Zahira telefon raqami", backup),
+        row("🎂", "Tug'ilgan sanangiz", birth_display),
+        row("📍", "Yashash manzilingiz", address),
         "",
-        row("💼", "Hozirgi vaqtda ...", status),
-        row("👨‍👩‍👧", "Oilaviy holati", family),
-        row("❤️", "Sog'liq", health),
+        row("💼", "Hozirgi vaqtda", status),
+        row("👨‍👩‍👧", "Oilaviy ahvolingiz", family),
+        row("🏥", "Kasalliklaringiz", health),
         "",
-        row("🎓", "Ma'lumot", education),
-        row("🏫", "O'quv yurti", f"{university} ({years})" if university and years else university),
+        row("🎓", "Ma'lumotingiz", education),
+        row("🏫", "O'quv yurti / yo'nalish", f"{university} ({years})" if university and years else university),
         "",
-        row("🗣", "Ingliz tili", english),
-        row("🗣", "Rus tili", russian),
-        row("🗣", "Boshqa til", other_lang),
-        row("💻", "Kompyuter", computer),
-        row("🖥", "Dasturlar", programs),
+        row("🗣", "Rus tili bilish darajasi", russian),
+        row("🗣", "Ingliz tili bilish darajasi", english),
+        row("🗣", "Boshqa chet tili", other_lang),
+        row("💻", "Kompyuterdan foydalanish darajasi", computer),
+        row("🖥", "Kompyuter dasturlari", programs),
         "",
-        row("🏢", "Oxirgi ish joyi", last_job),
-        row("📋", "Oldingi ish joylari", prev_jobs),
-        row("🏆", "Yutuqlar", achieve),
+        row("🏢", "Oldingi ish joylari", prev_jobs),
+        row("🏆", "Erishgan yutuqlar", achieve),
+        row("🚪", "Oxirgi ish joyi va bo'shash sababi", last_job),
+        row("📞", "HR/rahbariyat telefoni", hr_phone),
         "",
-        row("💡", "Nega sizni ishga olishimiz kerak?", why_hire),
-        row("🔮", "5 yildan keyin o'zingizni qayerda ko'rayapsiz?", future),
-        row("⏳", "Bizning korxonada qancha muddat ishlamoqchisiz?", stay),
+        row("💡", "Nega sizni ishga olishimiz kerak", why_hire),
+        row("🔮", "5 yildan keyin", future),
+        row("⏳", "Korxonada ishlash muddati", stay),
         "",
-        row("💳", "Kredit qarzdorligingiz bormi?", credit),
-        row("⚖️", "Sudlanganmisiz?", criminal),
+        row("💳", "Kredit qarzdorligi", credit),
+        row("⚖️", "Sudlanganmi", criminal),
+        "",
+        row("📖", "Personal Background", background),
     ]
 
-    return "\n".join(line for line in lines if line is not None)
+    text = "\n".join(line for line in lines if line is not None)
+    return text, photo_url
 
-def send_telegram(text):
-    success = True
-    for chat_id in filter(None, [CHAT_ID, CHANNEL_ID]):
-        url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-        resp = requests.post(url, json={
+def send_message(chat_id, text, photo_url):
+    base_url = f"https://api.telegram.org/bot{TG_TOKEN}"
+    if photo_url:
+        resp = requests.post(f"{base_url}/sendPhoto", json={
+            "chat_id": chat_id,
+            "photo": photo_url,
+            "caption": text,
+            "parse_mode": "HTML"
+        })
+        # Agar rasm yuborishda xato — matn sifatida yuboramiz
+        if not resp.ok:
+            print(f"Rasm xato ({resp.status_code}), matn sifatida yuborilmoqda...")
+            resp = requests.post(f"{base_url}/sendMessage", json={
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML"
+            })
+    else:
+        resp = requests.post(f"{base_url}/sendMessage", json={
             "chat_id": chat_id,
             "text": text,
             "parse_mode": "HTML"
         })
-        if not resp.ok:
-            print(f"Telegram xato ({chat_id}): {resp.status_code} — {resp.json()}")
+    if not resp.ok:
+        print(f"Telegram xato ({chat_id}): {resp.status_code} — {resp.json()}")
+    return resp.ok
+
+def send_telegram(text, photo_url):
+    success = True
+    for chat_id in filter(None, [CHAT_ID, CHANNEL_ID]):
+        if not send_message(chat_id, text, photo_url):
             success = False
     return success
 
@@ -195,12 +224,12 @@ def main():
             entries = query_database()
             new_entries = [e for e in entries if e["id"] not in seen]
             for entry in reversed(new_entries):
-                msg = format_entry(entry)
-                if send_telegram(msg):
+                text, photo_url = format_entry(entry)
+                if send_telegram(text, photo_url):
                     seen.add(entry["id"])
                     print(f"Yuborildi: {entry['id']}")
                 else:
-                    print(f"Xato: Telegram ga yuborib bo'lmadi")
+                    print(f"Xato: yuborib bo'lmadi")
             save_seen(seen)
         except Exception as e:
             print(f"Xato: {e}")
