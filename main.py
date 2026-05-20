@@ -164,26 +164,28 @@ def format_entry(entry):
 def send_message(chat_id, text, photo_url):
     base_url = f"https://api.telegram.org/bot{TG_TOKEN}"
     if photo_url:
-        resp = requests.post(f"{base_url}/sendPhoto", json={
-            "chat_id": chat_id,
-            "photo": photo_url,
-            "caption": text,
-            "parse_mode": "HTML"
-        })
-        # Agar rasm yuborishda xato — matn sifatida yuboramiz
-        if not resp.ok:
-            print(f"Rasm xato ({resp.status_code}), matn sifatida yuborilmoqda...")
-            resp = requests.post(f"{base_url}/sendMessage", json={
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": "HTML"
-            })
-    else:
-        resp = requests.post(f"{base_url}/sendMessage", json={
-            "chat_id": chat_id,
-            "text": text,
-            "parse_mode": "HTML"
-        })
+        try:
+            # Rasmni yuklab olamiz
+            img_resp = requests.get(photo_url, timeout=15)
+            if img_resp.ok:
+                # Fayl sifatida yuboramiz
+                resp = requests.post(f"{base_url}/sendPhoto", 
+                    data={"chat_id": chat_id, "caption": text, "parse_mode": "HTML"},
+                    files={"photo": ("photo.jpg", img_resp.content, "image/jpeg")}
+                )
+                if resp.ok:
+                    return True
+                print(f"Rasm xato ({resp.status_code}), matn sifatida yuborilmoqda...")
+            else:
+                print(f"Rasm yuklab bo'lmadi: {img_resp.status_code}")
+        except Exception as e:
+            print(f"Rasm xato: {e}")
+    # Rasm yo'q yoki xato — matn sifatida yuboramiz
+    resp = requests.post(f"{base_url}/sendMessage", json={
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "HTML"
+    })
     if not resp.ok:
         print(f"Telegram xato ({chat_id}): {resp.status_code} — {resp.json()}")
     return resp.ok
