@@ -8,6 +8,7 @@ NOTION_TOKEN = os.environ["NOTION_TOKEN"]
 DATABASE_ID = os.environ["DATABASE_ID"]
 TG_TOKEN = os.environ["TG_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
+CHANNEL_ID = os.environ.get("CHANNEL_ID", "")
 SEEN_FILE = "seen_ids.json"
 
 HEADERS = {
@@ -76,7 +77,7 @@ def get_age(birth_str):
 
 def row(icon, label, value):
     if value and str(value).strip():
-        return f"{icon} *{label}:* {value}"
+        return f"{icon} <b>{label}:</b> {value}"
     return None
 
 def format_entry(entry):
@@ -115,8 +116,8 @@ def format_entry(entry):
     birth_display = f"{birth} ({age} yosh)" if birth and age else birth
 
     lines = [
-        f"🆕 *Yangi anketa keldi!*",
-        f"📅 *Sana:* {entered}",
+        f"🆕 <b>Yangi anketa keldi!</b>",
+        f"📅 <b>Sana:</b> {entered}",
         "",
         row("👤", "Ism", full_name),
         row("📞", "Telefon", phone),
@@ -153,15 +154,18 @@ def format_entry(entry):
     return "\n".join(line for line in lines if line is not None)
 
 def send_telegram(text):
-    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    resp = requests.post(url, json={
-        "chat_id": CHAT_ID,
-        "text": text,
-        "parse_mode": "Markdown"
-    })
-    if not resp.ok:
-        print(f"Telegram xato: {resp.status_code} — {resp.json()}")
-    return resp.ok
+    success = True
+    for chat_id in filter(None, [CHAT_ID, CHANNEL_ID]):
+        url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+        resp = requests.post(url, json={
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "HTML"
+        })
+        if not resp.ok:
+            print(f"Telegram xato ({chat_id}): {resp.status_code} — {resp.json()}")
+            success = False
+    return success
 
 def query_database():
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
