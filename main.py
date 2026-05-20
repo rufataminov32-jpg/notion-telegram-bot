@@ -116,18 +116,17 @@ def format_entry(entry):
     birth_display = f"{birth} ({age} yosh)" if birth and age else birth
 
     lines = [
-        f"🆕 <b>Yangi anketa keldi!</b>",
         f"📅 <b>Sana:</b> {entered}",
         "",
-        row("👤", "Ism", full_name),
+        row("👤", "FISh", full_name),
         row("📞", "Telefon", phone),
         row("📞", "Zahira tel", backup),
-        row("📞", "HR tel", hr_phone),
+        row("📞", " Avvalgi ish joyidagi HR ", hr_phone),
         row("🎂", "Tug'ilgan sana", birth_display),
         row("📍", "Manzil", address),
         "",
-        row("💼", "Hozirgi holati", status),
-        row("👨‍👩‍👧", "Oilaviy", family),
+        row("💼", "Hozirgi vaqtda ...", status),
+        row("👨‍👩‍👧", "Oilaviy holati", family),
         row("❤️", "Sog'liq", health),
         "",
         row("🎓", "Ma'lumot", education),
@@ -143,12 +142,12 @@ def format_entry(entry):
         row("📋", "Oldingi ish joylari", prev_jobs),
         row("🏆", "Yutuqlar", achieve),
         "",
-        row("💡", "Nega ishga olish kerak", why_hire),
-        row("🔮", "5 yildan keyin", future),
-        row("⏳", "Necha muddat ishlaydi", stay),
+        row("💡", "Nega sizni ishga olishimiz kerak?", why_hire),
+        row("🔮", "5 yildan keyin o'zingizni qayerda ko'rayapsiz?", future),
+        row("⏳", "Bizning korxonada qancha muddat ishlamoqchisiz?", stay),
         "",
-        row("💳", "Kredit", credit),
-        row("⚖️", "Sudlanganmi", criminal),
+        row("💳", "Kredit qarzdorligingiz bormi?", credit),
+        row("⚖️", "Sudlanganmisiz?", criminal),
     ]
 
     return "\n".join(line for line in lines if line is not None)
