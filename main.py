@@ -124,7 +124,12 @@ def query_database():
         "page_size": 20
     }
     resp = requests.post(url, headers=HEADERS, json=body)
-    return resp.json().get("results", [])
+    data = resp.json()
+    if "error" in data or resp.status_code != 200:
+        print(f"Notion API xato: {resp.status_code} — {data}")
+    else:
+        print(f"Notion API: {len(data.get('results', []))} ta yozuv topildi")
+    return data.get("results", [])
 
 def main():
     print("Bot ishga tushdi...")
